@@ -1,0 +1,887 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title><?= typeof __APP_TITLE__ !== 'undefined' ? __APP_TITLE__ : 'Entrega de Peças' ?></title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <style>
+    html, body { height: 100%; }
+    .animate-in { animation: in .18s ease-out both; }
+    @keyframes in { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+  </style>
+</head>
+
+<body class="min-h-screen bg-slate-100 font-sans text-slate-900">
+  <header class="bg-slate-900 text-white p-4 shadow-xl flex flex-wrap justify-between items-center gap-4 border-b-4 border-blue-600">
+    <div class="hidden"><?= __DEPLOY_URL__ ?> | <?= __SCRIPT_ID__ ?> | <?= __BUILD__ ?></div>
+
+    <div class="flex items-center gap-3">
+      <div class="bg-blue-600 p-2 rounded-lg shadow-inner">
+        <i data-lucide="bus" class="w-6 h-6"></i>
+      </div>
+      <div>
+        <h1 class="text-lg font-black tracking-tighter uppercase leading-none">Entrega de Peças</h1>
+        <p class="text-[10px] text-blue-400 font-mono font-bold tracking-widest uppercase italic">Almoxarifado • Manutenção • Logística</p>
+      </div>
+    </div>
+
+    <nav class="flex bg-slate-800 p-1 rounded-xl shadow-inner" id="tabs">
+      <button data-tab="request" class="tab-btn flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-black transition-all">
+        <i data-lucide="wrench" class="w-4 h-4"></i><span class="hidden sm:inline">Mecânico</span>
+      </button>
+      <button data-tab="workshop_leader" class="tab-btn flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-black transition-all">
+        <i data-lucide="clipboard-list" class="w-4 h-4"></i><span class="hidden sm:inline">Líder</span>
+      </button>
+      <button data-tab="warehouse" class="tab-btn flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-black transition-all">
+        <i data-lucide="package" class="w-4 h-4"></i><span class="hidden sm:inline">Logística</span>
+      </button>
+      <button data-tab="config" class="tab-btn flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-black transition-all">
+        <i data-lucide="settings" class="w-4 h-4"></i><span class="hidden sm:inline">Dados</span>
+      </button>
+    </nav>
+  </header>
+
+  <main class="flex-1 p-4 md:p-6 max-w-7xl mx-auto w-full">
+
+    <section id="tab-request" class="tab-panel grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <div class="lg:col-span-4 space-y-4">
+        <div class="bg-white rounded-2xl shadow-sm border p-6 border-t-4 border-t-blue-500">
+          <h2 class="text-xl font-black mb-6 text-slate-800 flex items-center gap-2 uppercase tracking-tight">
+            <i data-lucide="search" class="w-5 h-5 text-blue-600"></i> Identificação
+          </h2>
+
+          <div class="space-y-4">
+            <div>
+              <label class="text-[10px] font-black uppercase text-slate-400 mb-1 block tracking-widest">Veículo (Placa/Prefixo)</label>
+              <input id="vehiclePlate" type="text" placeholder="Ex: BRA2E19"
+                class="w-full p-4 bg-slate-50 border-2 border-slate-100 focus:border-blue-500 rounded-xl outline-none font-black text-2xl shadow-inner uppercase transition-all" />
+            </div>
+
+            <div id="identifiedVehicleBox" class="hidden bg-blue-50 border-2 border-blue-200 p-4 rounded-xl items-center gap-4 animate-in">
+              <div class="bg-blue-600 text-white p-2 rounded-lg shadow-sm">
+                <i data-lucide="shield-check" class="w-5 h-5"></i>
+              </div>
+              <div class="overflow-hidden">
+                <p class="text-[10px] font-black uppercase text-blue-600 leading-none">Viatura Confirmada</p>
+                <p class="text-lg font-black text-slate-800 leading-tight">Prefixo: <span id="ivPrefixo"></span></p>
+                <p class="text-[10px] font-bold text-slate-500 uppercase truncate">
+                  <span id="ivCarroceria"></span>
+                </p>
+              </div>
+            </div>
+
+            <div>
+              <label class="text-[10px] font-black uppercase text-slate-400 mb-1 block tracking-widest">O que precisas?</label>
+              <input id="partSearch" type="text" placeholder="Ex: FILTRO ÓLEO"
+                class="w-full p-4 bg-slate-50 border-2 border-slate-100 focus:border-blue-500 rounded-xl outline-none font-bold text-lg shadow-inner transition-all" />
+            </div>
+
+            <button id="runAnalysisBtn"
+              class="w-full bg-blue-700 hover:bg-blue-800 text-white font-black py-4 rounded-xl shadow-lg transition-all flex items-center justify-center gap-3 disabled:opacity-30 uppercase active:scale-[0.98]">
+              Verificar Material SAP
+            </button>
+          </div>
+        </div>
+
+        <div id="searchFeedback" class="hidden bg-red-50 border border-red-200 p-4 rounded-xl gap-3 text-red-700 text-xs font-bold shadow-sm">
+          <i data-lucide="x-circle" class="w-5 h-5 shrink-0"></i>
+          <p id="searchFeedbackText"></p>
+        </div>
+      </div>
+
+      <div class="lg:col-span-8">
+        <div class="bg-white rounded-2xl shadow-sm border min-h-[580px] flex flex-col border-t-4 border-t-slate-800">
+          <div class="p-6 border-b bg-slate-50 rounded-t-2xl flex justify-between items-center">
+            <h3 class="font-black text-slate-700 uppercase text-xs tracking-widest leading-none">Sugestões Cruzadas</h3>
+            <div class="bg-white px-3 py-1 rounded-full border text-[10px] font-black text-slate-400">
+              Sincronizado Localmente
+            </div>
+          </div>
+
+          <div id="suggestionsList" class="flex-1 p-6 space-y-4 overflow-y-auto max-h-[600px]">
+            <div id="suggestionsEmpty" class="h-full flex flex-col items-center justify-center text-slate-300 py-12 italic opacity-40">
+              <i data-lucide="history" class="w-20 h-20 mb-4"></i>
+              <p class="font-black uppercase tracking-[0.2em] text-sm text-center">Inicie a pesquisa para ver as peças</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ABA LÍDER -->
+    <section id="tab-workshop_leader" class="tab-panel hidden space-y-4 overflow-y-auto max-h-[calc(100vh-200px)]">
+      <h2 class="text-2xl font-black mb-6 flex items-center gap-3 text-slate-800 uppercase tracking-tighter">
+        <i data-lucide="clipboard-list" class="w-7 h-7 text-blue-600"></i> Estado da Oficina
+      </h2>
+
+      <div id="leaderEmpty" class="text-center py-24 bg-white rounded-3xl border border-dashed text-slate-400 font-bold uppercase tracking-widest text-xs">
+        Sem pedidos ativos.
+      </div>
+
+      <div id="leaderList" class="space-y-4"></div>
+    </section>
+
+    <!-- ABA LOGÍSTICA -->
+    <section id="tab-warehouse" class="tab-panel hidden">
+      <div class="bg-white rounded-2xl shadow-xl border overflow-hidden">
+        <div class="bg-slate-900 p-8 text-white flex justify-between items-center border-b-4 border-yellow-400">
+          <div>
+            <h2 class="text-2xl font-black flex items-center gap-3 leading-none">
+              <i data-lucide="package" class="w-7 h-7 text-yellow-400"></i> Logistics & Supply
+            </h2>
+            <p class="text-slate-400 text-[10px] font-bold uppercase tracking-[0.3em] mt-2 font-mono">
+              Controle de Saída de Peças (Local)
+            </p>
+          </div>
+          <div class="bg-blue-600 px-4 py-2 rounded-xl text-xs font-black uppercase shadow-lg">
+            <span id="pendingCount">0</span> Entregas Pendentes
+          </div>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left">
+            <thead class="bg-slate-50 text-[10px] text-slate-500 uppercase tracking-widest border-b font-black">
+              <tr>
+                <th class="p-6 text-slate-600">Prefixo / Destino</th>
+                <th class="p-6 text-slate-600">Material Solicitado</th>
+                <th class="p-6 text-slate-600">Local de Coleta</th>
+                <th class="p-6 text-right text-slate-600">Ação Operacional</th>
+              </tr>
+            </thead>
+            <tbody id="warehouseTbody" class="divide-y"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ABA CONFIG -->
+    <section id="tab-config" class="tab-panel hidden">
+      <div class="max-w-5xl mx-auto space-y-6">
+        <div class="bg-white rounded-3xl shadow-sm border p-10 border-t-4 border-t-blue-600">
+          <h2 class="text-3xl font-black mb-10 flex items-center gap-3 text-slate-800 uppercase tracking-tighter">
+            <i data-lucide="settings" class="w-9 h-9 text-blue-600"></i> Sincronização de Bases
+          </h2>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div class="p-6 bg-slate-50 rounded-3xl border-2 border-slate-100 flex flex-col h-full shadow-sm hover:border-blue-300 transition-all group">
+              <div class="flex-1 mb-6">
+                <div class="flex justify-between items-center mb-4">
+                  <div id="tagConsumosIcon" class="p-4 rounded-2xl transition-colors shadow-md bg-blue-600 text-white">
+                    <i data-lucide="file-text" class="w-7 h-7"></i>
+                  </div>
+                  <div id="tagConsumosStatus" class="px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-slate-200 text-slate-500">
+                    Pendente
+                  </div>
+                </div>
+                <h3 class="font-black text-slate-800 text-lg mb-1 tracking-tight uppercase leading-none">1. Histórico SAP</h3>
+                <p class="text-[10px] text-slate-500 font-bold uppercase mb-2 leading-tight opacity-70 italic tracking-tighter">
+                  Dados de lançamentos por equipamento
+                </p>
+                <p class="text-xs font-black text-blue-600 mt-2 bg-white px-2 py-1 rounded w-fit border">
+                  <span id="countConsumos">0</span> Registros
+                </p>
+              </div>
+
+              <label class="flex flex-col items-center justify-center w-full h-40 border-2 border-slate-300 border-dashed rounded-3xl cursor-pointer bg-white hover:bg-blue-50 transition-all border-spacing-4">
+                <div class="flex flex-col items-center justify-center py-4 text-center">
+                  <i data-lucide="upload-cloud" class="w-10 h-10 mb-2 text-blue-400"></i>
+                  <p class="text-[10px] font-black uppercase tracking-widest text-slate-500">Subir Arquivo CSV</p>
+                </div>
+                <input id="fileConsumos" type="file" class="hidden" accept=".csv" />
+              </label>
+            </div>
+
+            <div class="p-6 bg-slate-50 rounded-3xl border-2 border-slate-100 flex flex-col h-full shadow-sm hover:border-blue-300 transition-all group">
+              <div class="flex-1 mb-6">
+                <div class="flex justify-between items-center mb-4">
+                  <div id="tagVeiculosIcon" class="p-4 rounded-2xl transition-colors shadow-md bg-blue-600 text-white">
+                    <i data-lucide="file-text" class="w-7 h-7"></i>
+                  </div>
+                  <div id="tagVeiculosStatus" class="px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-slate-200 text-slate-500">
+                    Pendente
+                  </div>
+                </div>
+                <h3 class="font-black text-slate-800 text-lg mb-1 tracking-tight uppercase leading-none">2. Cadastro Frota</h3>
+                <p class="text-[10px] text-slate-500 font-bold uppercase mb-2 leading-tight opacity-70 italic tracking-tighter">
+                  Relação Chassi + Ano + Carroçaria
+                </p>
+                <p class="text-xs font-black text-blue-600 mt-2 bg-white px-2 py-1 rounded w-fit border">
+                  <span id="countVeiculos">0</span> Registros
+                </p>
+              </div>
+
+              <label class="flex flex-col items-center justify-center w-full h-40 border-2 border-slate-300 border-dashed rounded-3xl cursor-pointer bg-white hover:bg-blue-50 transition-all border-spacing-4">
+                <div class="flex flex-col items-center justify-center py-4 text-center">
+                  <i data-lucide="upload-cloud" class="w-10 h-10 mb-2 text-blue-400"></i>
+                  <p class="text-[10px] font-black uppercase tracking-widest text-slate-500">Subir Arquivo CSV</p>
+                </div>
+                <input id="fileVeiculos" type="file" class="hidden" accept=".csv" />
+              </label>
+            </div>
+
+            <div class="p-6 bg-slate-50 rounded-3xl border-2 border-slate-100 flex flex-col h-full shadow-sm hover:border-blue-300 transition-all group">
+              <div class="flex-1 mb-6">
+                <div class="flex justify-between items-center mb-4">
+                  <div id="tagPosicoesIcon" class="p-4 rounded-2xl transition-colors shadow-md bg-blue-600 text-white">
+                    <i data-lucide="file-text" class="w-7 h-7"></i>
+                  </div>
+                  <div id="tagPosicoesStatus" class="px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-slate-200 text-slate-500">
+                    Pendente
+                  </div>
+                </div>
+                <h3 class="font-black text-slate-800 text-lg mb-1 tracking-tight uppercase leading-none">3. Almoxarifado</h3>
+                <p class="text-[10px] text-slate-500 font-bold uppercase mb-2 leading-tight opacity-70 italic tracking-tighter">
+                  Endereçamento físico de peças
+                </p>
+                <p class="text-xs font-black text-blue-600 mt-2 bg-white px-2 py-1 rounded w-fit border">
+                  <span id="countPosicoes">0</span> Registros
+                </p>
+              </div>
+
+              <label class="flex flex-col items-center justify-center w-full h-40 border-2 border-slate-300 border-dashed rounded-3xl cursor-pointer bg-white hover:bg-blue-50 transition-all border-spacing-4">
+                <div class="flex flex-col items-center justify-center py-4 text-center">
+                  <i data-lucide="upload-cloud" class="w-10 h-10 mb-2 text-blue-400"></i>
+                  <p class="text-[10px] font-black uppercase tracking-widest text-slate-500">Subir Arquivo CSV</p>
+                </div>
+                <input id="filePosicoes" type="file" class="hidden" accept=".csv" />
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="p-8 text-center text-slate-400 text-[10px] font-black uppercase tracking-[0.5em]">
+    V4.2 Estável &bull; 2024
+  </footer>
+
+  <script>
+    const state = {
+      activeTab: 'request',
+      vehiclePlate: '',
+      partSearch: '',
+      isProcessing: false,
+      searchFeedback: null,
+      identifiedVehicleObj: null,
+      identifyTimer: null,
+      identifySeq: 0,
+
+      consumos: [],
+      veiculos: [],
+      posicoes: [],
+
+      suggestions: [],
+      requests: [],
+
+      showReqInput: null,
+      tempReqNumber: ''
+    };
+
+    function normalize(str) {
+      if (!str) return '';
+      return str.toString().toLowerCase().replace(/[^a-z0-9]/g, '').replace(/^0+/, '');
+    }
+
+    function fmtTime(d) {
+      const hh = String(d.getHours()).padStart(2, '0');
+      const mm = String(d.getMinutes()).padStart(2, '0');
+      return `${hh}:${mm}`;
+    }
+
+    function identifiedVehicle() {
+      const v = state.identifiedVehicleObj;
+      if (!v) return null;
+
+      const key = normalize(state.vehiclePlate || '');
+      if (!key || key.length < 3) return null;
+
+      const placa = normalize(v['Placa'] || v['PLACA']);
+      const equip = normalize(
+        v['Número do Equipamento'] ||
+        v['Número de Equipamento'] ||
+        v['Numero do Equipamento'] ||
+        v['Numero de Equipamento'] ||
+        v['Número do Equipamento'] ||
+        ''
+      );
+
+      if ((placa && placa === key) || (equip && equip.includes(key))) return v;
+
+      return null;
+    }
+
+    function setFeedback(msg) {
+      state.searchFeedback = msg || null;
+      const box = document.getElementById('searchFeedback');
+      const txt = document.getElementById('searchFeedbackText');
+      if (!msg) {
+        box.classList.add('hidden');
+        box.classList.remove('flex');
+        return;
+      }
+      txt.textContent = msg;
+      box.classList.remove('hidden');
+      box.classList.add('flex');
+      lucide.createIcons();
+    }
+
+    function renderTabs() {
+      const tabBtns = document.querySelectorAll('.tab-btn');
+      tabBtns.forEach(btn => {
+        const id = btn.getAttribute('data-tab');
+        const active = id === state.activeTab;
+        btn.className = 'tab-btn flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-black transition-all ' +
+          (active ? 'bg-blue-600 text-white shadow-lg' : 'text-slate-400 hover:text-white hover:bg-slate-700/50');
+      });
+
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.add('hidden'));
+      document.getElementById('tab-' + state.activeTab).classList.remove('hidden');
+
+      renderLeader();
+      renderWarehouse();
+    }
+
+    function parseCsvSemicolon(text) {
+      const lines = text.split(/\r?\n/).filter(l => l.trim() !== '');
+      if (lines.length < 2) return [];
+      const headers = lines[0].split(';').map(h => h.trim());
+      const result = [];
+      for (let i=1;i<lines.length;i++) {
+        const values = lines[i].split(';');
+        const obj = {};
+        headers.forEach((h, idx) => obj[h] = values[idx] ? values[idx].trim() : '');
+        result.push(obj);
+      }
+      return result;
+    }
+
+    async function handleFileUpload(file, type) {
+      try {
+        setFeedback(null);
+        const text = await file.text();
+
+        const resp = await new Promise((res, rej) =>
+          google.script.run.withSuccessHandler(res).withFailureHandler(rej)
+            .api_replaceSheetFromCsv(type, text)
+        );
+
+        if (!resp || resp.ok !== true) {
+          throw new Error(resp?.error || 'Falha ao salvar CSV na planilha.');
+        }
+
+        const data = resp.data || {};
+        state.basesMeta = data.basesMeta || null;
+
+        if (type === 'veiculos') state.veiculos = [];
+
+        renderConfigCounts();
+        renderIdentifiedVehicleBox();
+
+      } catch (err) {
+        console.error(err);
+        setFeedback('Erro ao importar CSV: ' + (err?.message || err));
+      }
+    }
+
+    function renderConfigCounts() {
+      const meta = state.basesMeta || {};
+
+      const c = meta.consumos?.rows ?? 0;
+      const v = meta.veiculos?.rows ?? 0;
+      const p = meta.posicoes?.rows ?? 0;
+
+      document.getElementById('countConsumos').textContent = Number(c).toLocaleString();
+      document.getElementById('countVeiculos').textContent = Number(v).toLocaleString();
+      document.getElementById('countPosicoes').textContent = Number(p).toLocaleString();
+
+      const map = [
+        { ok: !!meta.consumos?.ok && c > 0, icon: 'tagConsumosIcon', status: 'tagConsumosStatus' },
+        { ok: !!meta.veiculos?.ok && v > 0, icon: 'tagVeiculosIcon', status: 'tagVeiculosStatus' },
+        { ok: !!meta.posicoes?.ok && p > 0, icon: 'tagPosicoesIcon', status: 'tagPosicoesStatus' }
+      ];
+
+      map.forEach(m => {
+        const icon = document.getElementById(m.icon);
+        const st = document.getElementById(m.status);
+
+        icon.className = 'p-4 rounded-2xl transition-colors shadow-md ' + (m.ok ? 'bg-green-600 text-white' : 'bg-blue-600 text-white');
+        st.className = 'px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ' + (m.ok ? 'bg-green-100 text-green-700 border border-green-200' : 'bg-slate-200 text-slate-500');
+        st.textContent = m.ok ? 'Sincronizado' : 'Pendente';
+      });
+
+      lucide.createIcons();
+    }
+
+    function renderIdentifiedVehicleBox() {
+      const v = identifiedVehicle();
+      const box = document.getElementById('identifiedVehicleBox');
+
+      if (!v) {
+        box.classList.add('hidden');
+        box.classList.remove('flex');
+        return;
+      }
+
+      document.getElementById('ivPrefixo').textContent = v['Número de Equipamento'] || '';
+      document.getElementById('ivCarroceria').textContent = `${v['Fabricante Carroceria'] || ''} ${v['Modelo Carroceria'] || ''}`.trim();
+
+      box.classList.remove('hidden');
+      box.classList.add('flex');
+
+      lucide.createIcons();
+    }
+
+    function renderProcessing(isOn) {
+      const btn = document.getElementById('runAnalysisBtn');
+      btn.disabled = !!isOn;
+      btn.textContent = isOn ? 'A processar histórico...' : 'Verificar Material SAP';
+    }
+
+    function escapeHtml(str) {
+      return String(str ?? '')
+        .replaceAll('&','&amp;')
+        .replaceAll('<','&lt;')
+        .replaceAll('>','&gt;')
+        .replaceAll('"','&quot;')
+        .replaceAll("'",'&#039;');
+    }
+
+    const api = {
+      ping: () => new Promise((res, rej) =>
+        google.script.run.withSuccessHandler(res).withFailureHandler(rej).api_ping()
+      ),
+      init: () => new Promise((res, rej) =>
+        google.script.run.withSuccessHandler(res).withFailureHandler(rej).api_init()
+      ),
+      searchSuggestions: (vehicleQuery, partSearch) => new Promise((res, rej) =>
+        google.script.run.withSuccessHandler(res).withFailureHandler(rej).api_searchSuggestions(vehicleQuery, partSearch)
+      ),
+      createRequest: (payload) => new Promise((res, rej) =>
+        google.script.run.withSuccessHandler(res).withFailureHandler(rej).api_createRequest(payload)
+      ),
+      updateRequestStatus: (id, status, extra) => new Promise((res, rej) =>
+        google.script.run.withSuccessHandler(res).withFailureHandler(rej).api_updateRequestStatus(id, status, extra)
+      ),
+      identifyVehicle: (vehicleQuery) => new Promise((res, rej) =>
+      google.script.run.withSuccessHandler(res).withFailureHandler(rej).api_identifyVehicle(vehicleQuery)
+      ),
+      listRequests: () => new Promise((res, rej) =>
+        google.script.run.withSuccessHandler(res).withFailureHandler(rej).api_listRequests()
+      )
+    };
+
+    async function runAnalysis() {
+      if (!state.partSearch) return setFeedback('Indique o nome da peça para pesquisar.');
+
+      state.isProcessing = true;
+      setFeedback(null);
+      renderProcessing(true);
+
+      try {
+        const resp = await api.searchSuggestions(state.vehiclePlate, state.partSearch);
+        if (!resp || resp.ok !== true) throw new Error(resp?.error || 'Backend retornou resposta inválida.');
+
+        const data = resp.data || {};
+        state.suggestions = Array.isArray(data.suggestions) ? data.suggestions : [];
+        state.identifiedVehicleObj = data.identifiedVehicle || null;
+
+        renderIdentifiedVehicleBox();
+        renderSuggestions();
+
+        if (!state.suggestions.length) setFeedback('Nenhum material compatível encontrado no histórico da planilha.');
+      } catch (err) {
+        console.error(err);
+        setFeedback(err?.message || String(err));
+      } finally {
+        state.isProcessing = false;
+        renderProcessing(false);
+      }
+    }
+
+    function renderSuggestions() {
+      const list = document.getElementById('suggestionsList');
+      const empty = document.getElementById('suggestionsEmpty');
+
+      Array.from(list.querySelectorAll('[data-sug-item="1"]')).forEach(n => n.remove());
+
+      if (!state.suggestions || state.suggestions.length === 0) {
+        empty.classList.remove('hidden');
+        lucide.createIcons();
+        return;
+      }
+
+      empty.classList.add('hidden');
+
+      state.suggestions.forEach((s) => {
+        const border =
+          s.priority === 1 ? 'border-blue-500 ring-2 ring-blue-500/10' :
+          s.priority === 2 ? 'border-green-400' :
+          s.priority <= 4 ? 'border-indigo-200' :
+          'border-slate-100';
+
+        const badge =
+          s.priority === 1 ? 'bg-blue-600 text-white' : 'bg-slate-900 text-white';
+
+        const tag =
+          s.priority === 1 ? 'bg-blue-100 text-blue-700' :
+          s.priority === 2 ? 'bg-green-100 text-green-700' :
+          s.priority <= 4 ? 'bg-indigo-100 text-indigo-700' :
+          'bg-slate-100 text-slate-500';
+
+        const btn =
+          s.priority <= 2 ? 'bg-blue-600 text-white hover:bg-blue-700' :
+          'bg-slate-900 text-white hover:bg-slate-800';
+
+        const node = document.createElement('div');
+        node.setAttribute('data-sug-item','1');
+        node.className = `flex flex-col md:flex-row items-center justify-between p-5 bg-white border-2 rounded-2xl hover:shadow-lg transition-all group shadow-sm ${border}`;
+
+        node.innerHTML = `
+          <div class="flex-1 w-full">
+            <div class="flex items-center gap-3">
+              <span class="px-3 py-1 rounded-lg font-mono font-black text-sm shadow-sm ${badge}">${escapeHtml(s.code || '')}</span>
+              <span class="text-[9px] px-2 py-1 rounded-full font-black uppercase flex items-center gap-1 ${tag}">
+                ${s.priority <= 2 ? `<i data-lucide="star" class="w-3 h-3"></i>` : ''}
+                ${escapeHtml(s.confianca || '')}
+              </span>
+            </div>
+            <div class="text-lg font-black text-slate-800 mt-2 uppercase tracking-tight leading-tight">${escapeHtml(s.descr || '')}</div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-2 mt-3">
+              <div class="bg-amber-100 text-amber-800 px-3 py-1 rounded-lg flex items-center gap-1 text-[11px] font-black border border-amber-200 w-fit">
+                <i data-lucide="map-pin" class="w-4 h-4"></i> POSIÇÃO: ${escapeHtml(s.pos || '')}
+              </div>
+              <div class="text-[10px] font-bold text-slate-400 uppercase flex items-center gap-1">
+                Ref: ${escapeHtml(s.originalCarroceria || 'N/D')} / ${escapeHtml(s.originalChassi || 'N/D')}
+              </div>
+            </div>
+          </div>
+
+          <button class="mt-4 md:mt-0 w-full md:w-auto px-8 py-3 rounded-xl font-black text-sm transition-all uppercase shadow-lg active:scale-95 ${btn}">
+            Pedir
+          </button>
+        `;
+
+        node.querySelector('button').addEventListener('click', () => handleConfirmRequest(s));
+        list.appendChild(node);
+      });
+
+      lucide.createIcons();
+    }
+
+    async function handleConfirmRequest(suggestion) {
+      const v = identifiedVehicle();
+
+      const newReq = {
+        plate: v ? (v['Placa'] || '').toString() : state.vehiclePlate.toUpperCase(),
+        equip: v ? (v['Número de Equipamento'] || v['Número do Equipamento'] || '').toString() : '???',
+        chassi: v ? (v['Modelo Chassi'] || '').toString() : 'N/D',
+        carroceria: v ? `${v['Fabricante Carroceria'] || ''} ${v['Modelo Carroceria'] || ''}`.trim() : 'N/D',
+        part: state.partSearch || suggestion.descr,
+        selectedCode: suggestion.code,
+        selectedDescr: suggestion.descr,
+        pos: suggestion.pos,
+        status: 'pending',
+        timestamp: fmtTime(new Date()),
+        mechanic: 'Oficina Central',
+        sapOrder: '',
+        requisitionNumber: ''
+      };
+
+      try {
+        const resp = await api.createRequest(newReq);
+        if (!resp || resp.ok !== true) throw new Error(resp?.error || 'Backend não retornou resposta válida.');
+
+        const data = resp.data || {};
+        state.requests = Array.isArray(data.requests) ? data.requests : [];
+
+      } catch (err) {
+        console.error(err);
+        setFeedback('Falha ao salvar pedido: ' + (err?.message || err));
+        return;
+      }
+
+      state.partSearch = '';
+      state.suggestions = [];
+      document.getElementById('partSearch').value = '';
+      setFeedback(null);
+
+      renderSuggestions();
+      renderLeader();
+      renderWarehouse();
+    }
+
+    async function updateStatus(id, newStatus, extraData = {}) {
+      try {
+        const resp = await api.updateRequestStatus(id, newStatus, extraData);
+        if (!resp || resp.ok !== true) throw new Error(resp?.error || 'Backend retornou resposta inválida.');
+
+        const data = resp.data || {};
+        state.requests = Array.isArray(data.requests) ? data.requests : [];
+      } catch (err) {
+        console.error(err);
+        setFeedback('Falha ao atualizar status: ' + (err?.message || err));
+      }
+
+      renderLeader();
+      renderWarehouse();
+    }
+
+    function renderLeader() {
+      const list = document.getElementById('leaderList');
+      const empty = document.getElementById('leaderEmpty');
+
+      list.innerHTML = '';
+
+      if (!state.requests || state.requests.length === 0) {
+        empty.classList.remove('hidden');
+        return;
+      }
+      empty.classList.add('hidden');
+
+      state.requests.forEach(req => {
+        const leftColor = req.status === 'delivered' ? '#22c55e' : req.status === 'requested' ? '#f59e0b' : '#2563eb';
+        const statusLabel = req.status === 'delivered' ? 'Instalado' : req.status === 'requested' ? 'Requisitado' : 'Aguardando';
+        const statusClass = req.status === 'delivered'
+          ? 'bg-green-100 text-green-700 border-green-200'
+          : req.status === 'requested'
+            ? 'bg-amber-100 text-amber-700 border-amber-200'
+            : 'bg-blue-100 text-blue-700 border-blue-200';
+
+        const wrap = document.createElement('div');
+        wrap.className = 'bg-white p-6 rounded-2xl border shadow-sm flex flex-col md:flex-row justify-between items-center gap-6 relative overflow-hidden transition-all hover:shadow-md border-l-8 border-l-transparent';
+        wrap.style.borderLeftColor = leftColor;
+
+        wrap.innerHTML = `
+          <div class="flex gap-6 items-center flex-1">
+            <div class="bg-slate-50 p-4 rounded-xl border-2 border-slate-100 text-slate-400 flex flex-col items-center min-w-[130px] shadow-inner">
+              <div class="flex items-center gap-1 mb-1">
+                 <i data-lucide="bus" class="w-5 h-5 text-slate-900"></i>
+                 <span class="text-[10px] font-black uppercase text-slate-900 tracking-tighter">Prefixo</span>
+              </div>
+              <span class="text-xl font-black text-blue-600 leading-none">${escapeHtml(req.equip || '')}</span>
+              <span class="text-[10px] font-bold mt-1 bg-slate-200 px-2 rounded-full text-slate-600 uppercase tracking-tighter">${escapeHtml(req.plate || '')}</span>
+            </div>
+
+            <div class="flex-1">
+              <div class="flex items-center gap-2 mb-1">
+                <span class="font-black text-xl uppercase text-slate-800 leading-none">${escapeHtml(req.selectedDescr || '')}</span>
+                <span class="bg-blue-600 text-white px-2 py-0.5 rounded text-[10px] font-mono font-bold">${escapeHtml(req.selectedCode || '')}</span>
+              </div>
+
+              <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-[10px] font-black text-slate-400 uppercase mt-2">
+                <div class="truncate font-bold">CHASSI: <span class="text-slate-700 font-normal">${escapeHtml(req.chassi || '')}</span></div>
+                <div class="truncate font-bold">CARROÇARIA: <span class="text-slate-700 font-normal">${escapeHtml(req.carroceria || '')}</span></div>
+                <div class="text-amber-600 font-bold">POSIÇÃO: ${escapeHtml(req.pos || '')}</div>
+                <div class="font-bold tracking-tight">HORA: <span class="text-slate-700 font-normal">${escapeHtml(req.timestamp || '')}</span></div>
+              </div>
+
+              ${req.requisitionNumber ? `
+                <div class="mt-2 bg-amber-50 border border-amber-200 p-2 rounded-lg flex items-center gap-2 text-amber-700 font-black text-[10px] uppercase">
+                  <i data-lucide="file-plus" class="w-4 h-4"></i> Requisição SAP de Compra: ${escapeHtml(req.requisitionNumber)}
+                </div>` : ''}
+            </div>
+          </div>
+
+          <div class="flex flex-col items-end gap-2">
+            <span class="px-4 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border ${statusClass}">
+              ${statusLabel}
+            </span>
+
+            <div class="flex gap-2">
+              <button class="btn-reset text-[10px] font-black text-slate-400 hover:text-blue-600 uppercase">Resetar</button>
+              <span class="text-slate-200">|</span>
+              <button class="btn-final text-[10px] font-black text-green-600 hover:underline uppercase">Finalizar</button>
+            </div>
+          </div>
+        `;
+
+        wrap.querySelector('.btn-reset').addEventListener('click', () => updateStatus(req.id, 'pending'));
+        wrap.querySelector('.btn-final').addEventListener('click', () => updateStatus(req.id, 'delivered', { sapOrder: 'MIGO-' + Math.floor(Math.random() * 9999) }));
+
+        list.appendChild(wrap);
+      });
+
+      lucide.createIcons();
+    }
+
+    function renderWarehouse() {
+      const tbody = document.getElementById('warehouseTbody');
+      tbody.innerHTML = '';
+
+      const pending = (state.requests || []).filter(r => r.status === 'pending');
+      document.getElementById('pendingCount').textContent = pending.length;
+
+      pending.forEach(req => {
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-blue-50/50 transition-colors';
+
+        const showInput = state.showReqInput === req.id;
+
+        tr.innerHTML = `
+          <td class="p-6">
+            <div class="font-black text-blue-900 text-2xl tracking-tighter leading-none">${escapeHtml(req.equip || '')}</div>
+            <div class="text-[10px] font-bold text-slate-400 uppercase mt-1 italic tracking-tight truncate max-w-[150px]">${escapeHtml(req.carroceria || '')}</div>
+          </td>
+
+          <td class="p-6">
+            <div class="font-black text-slate-700 uppercase mb-1 leading-tight">${escapeHtml(req.selectedDescr || '')}</div>
+            <div class="text-xs font-mono font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded w-fit border border-blue-100">Cód: ${escapeHtml(req.selectedCode || '')}</div>
+          </td>
+
+          <td class="p-6">
+            <div class="flex items-center gap-3 text-amber-800 font-black text-xl bg-amber-50 px-5 py-3 rounded-2xl border-2 border-amber-200 w-fit shadow-sm">
+              <i data-lucide="navigation" class="w-6 h-6 text-amber-500"></i> ${escapeHtml(req.pos || '')}
+            </div>
+          </td>
+
+          <td class="p-6 text-right">
+            ${showInput ? `
+              <div class="flex flex-col items-end gap-2 animate-in">
+                <input id="reqinput-${req.id}" type="text" placeholder="Nº Requisição SAP"
+                  class="p-2 border-2 border-amber-500 rounded-lg outline-none text-xs font-bold w-44 shadow-inner uppercase" />
+                <div class="flex gap-2">
+                  <button class="btn-cancel bg-slate-200 text-slate-600 px-3 py-1 rounded text-[10px] font-black uppercase">Cancelar</button>
+                  <button class="btn-confirm bg-amber-600 text-white px-3 py-1 rounded text-[10px] font-black uppercase shadow-md">Confirmar</button>
+                </div>
+              </div>
+            ` : `
+              <div class="flex justify-end gap-3">
+                <button class="btn-missing bg-white border-2 border-amber-500 text-amber-600 hover:bg-amber-50 font-black py-4 px-6 rounded-2xl flex items-center gap-2 transition-all shadow-sm active:scale-95 text-xs">
+                  <i data-lucide="file-plus" class="w-5 h-5"></i> Faltou Saldo
+                </button>
+                <button class="btn-deliver bg-slate-900 hover:bg-green-600 text-white font-black py-4 px-8 rounded-2xl flex items-center gap-3 transition-all shadow-lg active:scale-95 text-xs uppercase tracking-tighter">
+                  <i data-lucide="truck" class="w-5 h-5"></i> Marcar Entrega
+                </button>
+              </div>
+            `}
+          </td>
+        `;
+
+        if (showInput) {
+          tr.querySelector('.btn-cancel').addEventListener('click', () => { state.showReqInput = null; renderWarehouse(); });
+          tr.querySelector('.btn-confirm').addEventListener('click', () => {
+            const val = (document.getElementById(`reqinput-${req.id}`).value || '').trim();
+            updateStatus(req.id, 'requested', { requisitionNumber: val });
+            state.showReqInput = null;
+          });
+        } else {
+          tr.querySelector('.btn-missing').addEventListener('click', () => { state.showReqInput = req.id; renderWarehouse(); });
+          tr.querySelector('.btn-deliver').addEventListener('click', () => updateStatus(req.id, 'delivered', { sapOrder: 'MIGO-' + Math.floor(Math.random() * 999999) }));
+        }
+
+        tbody.appendChild(tr);
+      });
+
+      lucide.createIcons();
+    }
+
+    function scheduleIdentifyVehicle() {
+      clearTimeout(state.identifyTimer);
+
+      const raw = (state.vehiclePlate || '').trim();
+      const key = normalize(raw);
+
+      if (!key || key.length < 3) {
+        state.identifiedVehicleObj = null;
+        renderIdentifiedVehicleBox();
+        return;
+      }
+
+      const seq = ++state.identifySeq;
+
+      state.identifyTimer = setTimeout(async () => {
+        try {
+          const resp = await api.identifyVehicle(raw);
+          if (!resp || resp.ok !== true) throw new Error(resp?.error || 'Falha ao identificar veículo.');
+
+          if (seq !== state.identifySeq) return;
+
+          const data = resp.data || {};
+          state.identifiedVehicleObj = data.vehicle || null;
+
+          renderIdentifiedVehicleBox();
+        } catch (err) {
+          console.error(err);
+          state.identifiedVehicleObj = null;
+          renderIdentifiedVehicleBox();
+        }
+      }, 250);
+    }
+
+    function wireEvents() {
+      document.getElementById('tabs').addEventListener('click', (e) => {
+        const btn = e.target.closest('button[data-tab]');
+        if (!btn) return;
+        state.activeTab = btn.getAttribute('data-tab');
+        renderTabs();
+      });
+
+      document.getElementById('vehiclePlate').addEventListener('input', (e) => {
+        state.vehiclePlate = (e.target.value || '').toUpperCase();
+        scheduleIdentifyVehicle(); 
+      });
+
+      document.getElementById('partSearch').addEventListener('input', (e) => {
+        state.partSearch = e.target.value || '';
+      });
+
+      document.getElementById('runAnalysisBtn').addEventListener('click', runAnalysis);
+
+      document.getElementById('fileConsumos').addEventListener('change', (e) => {
+        const f = e.target.files && e.target.files[0];
+        if (f) handleFileUpload(f, 'consumos');
+      });
+      document.getElementById('fileVeiculos').addEventListener('change', (e) => {
+        const f = e.target.files && e.target.files[0];
+        if (f) handleFileUpload(f, 'veiculos');
+      });
+      document.getElementById('filePosicoes').addEventListener('change', (e) => {
+        const f = e.target.files && e.target.files[0];
+        if (f) handleFileUpload(f, 'posicoes');
+      });
+    }
+
+    async function init() {
+      lucide.createIcons();
+      wireEvents();
+
+      try {
+        const pong = await api.ping();
+        console.log('PING API OK:', pong);
+      } catch (e) {
+        setFeedback('Nem o ping funcionou: ' + (e?.message || e));
+        return;
+      }
+
+      try {
+        const resp = await api.init();
+        console.log('INIT RAW:', resp);
+
+        if (!resp || resp.ok !== true) throw new Error(resp?.error || 'Backend retornou ok:false');
+        const data = resp.data || {};
+
+        state.requests = Array.isArray(data.requests) ? data.requests : [];
+        state.basesMeta = data.basesMeta || null;
+      } catch (err) {
+        console.error(err);
+        setFeedback('Falha ao conectar no backend: ' + (err?.message || err));
+        state.requests = [];
+      }
+
+      renderTabs();
+      renderSuggestions();
+      renderLeader();
+      renderWarehouse();
+      renderConfigCounts();
+    }
+
+    init();
+  </script>
+</body>
+</html>
